@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PixelCraft Carousel Studio</title>
+  <meta
+    name="description"
+    content="Create clean, intentional, AI-assisted carousel content and visuals."
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <div class="app">
+
+    <!-- NAVBAR -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-mark">P</div>
+        <div>
+          <div class="brand-name">PIXELCRAFT</div>
+          <div class="brand-handle">@pixelscraft</div>
+        </div>
+      </div>
+
+      <div class="nav-badge">
+        CAROUSEL STUDIO
+      </div>
+    </header>
+
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="eyebrow">AI CREATIVE WORKFLOW</div>
+
+      <h1>
+        Turn one idea into a
+        <span>beautiful carousel.</span>
+      </h1>
+
+      <p>
+        Build the content first. Refine it. Then generate the visuals.
+        No clutter. No random AI aesthetics. Just intentional design.
+      </p>
+    </section>
+
+
+    <!-- STEP INDICATOR -->
+    <div class="steps">
+      <div class="step active" id="stepIndicator1">
+        <span>01</span>
+        CONTENT
+      </div>
+
+      <div class="step-line"></div>
+
+      <div class="step" id="stepIndicator2">
+        <span>02</span>
+        REFINE
+      </div>
+
+      <div class="step-line"></div>
+
+      <div class="step" id="stepIndicator3">
+        <span>03</span>
+        VISUAL
+      </div>
+    </div>
+
+
+    <!-- INPUT PANEL -->
+    <section class="panel" id="inputPanel">
+
+      <div class="panel-heading">
+        <div>
+          <span class="small-label">START WITH AN IDEA</span>
+          <h2>Tell us what you're creating.</h2>
+        </div>
+      </div>
+
+
+      <div class="field full">
+        <label for="topic">Topic / Idea</label>
+
+        <textarea
+          id="topic"
+          rows="4"
+          placeholder="Example: 5 mistakes that make your Instagram content look unprofessional..."
+        ></textarea>
+      </div>
+
+
+      <div class="grid-2">
+
+        <div class="field">
+          <label for="audience">Audience</label>
+
+          <select id="audience">
+            <option value="Creators">Creators</option>
+            <option value="Small business owners">Small business owners</option>
+            <option value="Educators">Educators</option>
+            <option value="Marketing professionals">Marketing professionals</option>
+            <option value="General audience">General audience</option>
+          </select>
+        </div>
+
+
+        <div class="field">
+          <label for="tone">Content Tone</label>
+
+          <select id="tone">
+            <option value="Educational">Educational</option>
+            <option value="Casual">Casual</option>
+            <option value="Bold">Bold</option>
+            <option value="Storytelling">Storytelling</option>
+            <option value="Professional">Professional</option>
+          </select>
+        </div>
+
+
+        <div class="field">
+          <label for="slideCount">Number of Slides</label>
+
+          <select id="slideCount">
+            <option value="5">5 slides</option>
+            <option value="6">6 slides</option>
+            <option value="7">7 slides</option>
+            <option value="8">8 slides</option>
+            <option value="9">9 slides</option>
+            <option value="10">10 slides</option>
+          </select>
+        </div>
+
+
+        <div class="field">
+          <label for="color">Dominant Color</label>
+
+          <input
+            id="color"
+            type="text"
+            placeholder="Optional — e.g. violet, cream, black"
+          />
+        </div>
+
+      </div>
+
+
+      <!-- STYLE -->
+      <div class="style-section">
+
+        <div class="field">
+          <label>Visual Style</label>
+
+          <div class="style-grid">
+
+            <button class="style-option selected" data-style="3D Modern">
+              <strong>3D Modern</strong>
+              <span>Clean dimensional objects</span>
+            </button>
+
+            <button class="style-option" data-style="Bold Typography">
+              <strong>Bold Type</strong>
+              <span>Strong editorial typography</span>
+            </button>
+
+            <button class="style-option" data-style="Pencil Sketch">
+              <strong>Pencil Sketch</strong>
+              <span>Graphite editorial drawing</span>
+            </button>
+
+            <button class="style-option" data-style="Paper Cut">
+              <strong>Paper Cut</strong>
+              <span>Layered paper composition</span>
+            </button>
+
+            <button class="style-option" data-style="Clay">
+              <strong>Clay</strong>
+              <span>Soft tactile forms</span>
+            </button>
+
+            <button class="style-option" data-style="Editorial Minimal">
+              <strong>Editorial</strong>
+              <span>Minimal magazine direction</span>
+            </button>
+
+            <button class="style-option" data-style="Isometric">
+              <strong>Isometric</strong>
+              <span>Structured geometric objects</span>
+            </button>
+
+            <button class="style-option" data-style="Custom">
+              <strong>Custom</strong>
+              <span>Describe your own direction</span>
+            </button>
+
+          </div>
+        </div>
+
+
+        <div class="field custom-style-field" id="customStyleField">
+
+          <label for="customStyle">
+            Custom visual direction
+          </label>
+
+          <textarea
+            id="customStyle"
+            rows="3"
+            placeholder="Describe the visual style you want..."
+          ></textarea>
+
+        </div>
+
+      </div>
+
+
+      <!-- REFERENCE -->
+      <div class="reference-box">
+
+        <div>
+          <span class="small-label">OPTIONAL</span>
+
+          <h3>Have a visual reference?</h3>
+
+          <p>
+            Uploading a reference lets the creative director understand
+            the visual language you like.
+          </p>
+        </div>
+
+        <label class="upload-button">
+          <input type="file" id="referenceImage" accept="image/*" />
+          <span id="uploadText">+ Add reference</span>
+        </label>
+
+      </div>
+
+
+      <div class="watermark-row">
+
+        <div>
+          <strong>Watermark</strong>
+          <span>Optional brand handle on the visual</span>
+        </div>
+
+        <input
+          id="watermark"
+          type="text"
+          placeholder="@yourhandle"
+        />
+
+      </div>
+
+
+      <button class="primary-button" id="generateContent">
+        <span>GENERATE CONTENT</span>
+        <span>→</span>
+      </button>
+
+      <div class="error-message" id="errorMessage"></div>
+
+    </section>
+
+
+    <!-- EDITOR -->
+    <section class="editor-section hidden" id="editorSection">
+
+      <div class="section-top">
+
+        <div>
+          <span class="small-label">STEP 02</span>
+          <h2>Refine your carousel.</h2>
+          <p>
+            Nothing is final yet. Edit the copy until it sounds exactly
+            the way you want.
+          </p>
+        </div>
+
+        <button class="secondary-button" id="backToInput">
+          ← Back
+        </button>
+
+      </div>
+
+
+      <div id="slidesEditor"></div>
+
+
+      <button class="primary-button" id="generateVisual">
+        <span>GENERATE VISUALS</span>
+        <span>✦</span>
+      </button>
+
+      <div class="editor-status" id="editorStatus"></div>
+
+    </section>
+
+
+    <!-- RESULTS -->
+    <section class="results-section hidden" id="resultsSection">
+
+      <div class="section-top">
+
+        <div>
+          <span class="small-label">STEP 03</span>
+          <h2>Your visual direction.</h2>
+          <p>
+            Every slide has its own visual prompt and structured JSON.
+          </p>
+        </div>
+
+        <button class="secondary-button" id="copyAllJson">
+          Copy All JSON
+        </button>
+
+      </div>
+
+
+      <div id="visualResults"></div>
+
+    </section>
+
+
+    <!-- FOOTER -->
+    <footer>
+      <span>PIXELCRAFT</span>
+      <span>Designed for intentional creators.</span>
+    </footer>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

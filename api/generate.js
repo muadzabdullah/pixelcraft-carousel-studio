@@ -36,12 +36,12 @@ export default async function handler(req, res) {
       10
     );
 
-    const systemPrompt = `
+    const prompt = `
 You are the AI Creative Director behind
 PIXELCRAFT CAROUSEL STUDIO.
 
-Your job is to create sophisticated,
-intentional, non-generic carousel content.
+Create a sophisticated, intentional,
+non-generic carousel.
 
 The product is NOT limited to religious content.
 It can be used for creators, businesses,
@@ -70,7 +70,7 @@ to the slide content.
 
 Use generous negative space.
 
-Create a strong visual hierarchy.
+Create strong visual hierarchy.
 
 The design should feel intentionally art-directed,
 not automatically generated.
@@ -114,7 +114,7 @@ ${topic}
 
 CONTENT RULES:
 
-Create exactly ${count} logical carousel slides.
+Create exactly ${count} slides.
 
 Slide 1 must have a strong hook.
 
@@ -128,38 +128,35 @@ or CTA when appropriate.
 Write concise, natural,
 human-sounding copy.
 
-Do not use generic AI phrases such as:
+Avoid generic AI phrases such as:
 "unlock your potential",
 "dive into",
 "in today's fast-paced world",
 "revolutionize",
 "game changer",
-unless the topic genuinely requires them.
+unless genuinely appropriate.
 
-Each slide must feel connected
+Each slide should connect naturally
 to the previous slide.
 
 HEADLINES:
 
-Keep headlines concise.
-
-Avoid unnecessarily long paragraphs
-inside headlines.
+Keep headlines concise and easy to scan.
 
 BODY:
 
-Keep body copy easy to scan.
+Keep body copy concise and useful.
 
 VISUAL DIRECTION:
 
-Explain the art direction of the slide
-in a concise but useful way.
+Describe the intended art direction
+of the slide.
 
 VISUAL PROMPT:
 
 Write a complete image-generation prompt.
 
-Every visual prompt must explicitly include:
+Every visual prompt MUST explicitly include:
 
 No humans.
 No faces.
@@ -174,36 +171,34 @@ unless typography is specifically the visual concept.
 
 Use 4:5 vertical composition.
 
-Return ONLY JSON matching the provided schema.
+Return ONLY valid JSON.
 `;
 
-    const schema = {
-      type: "object",
+    const responseSchema = {
+      type: "OBJECT",
       properties: {
         slides: {
-          type: "array",
-          minItems: count,
-          maxItems: count,
+          type: "ARRAY",
           items: {
-            type: "object",
+            type: "OBJECT",
             properties: {
               slide: {
-                type: "integer"
+                type: "INTEGER"
               },
               role: {
-                type: "string"
+                type: "STRING"
               },
               headline: {
-                type: "string"
+                type: "STRING"
               },
               body: {
-                type: "string"
+                type: "STRING"
               },
               visual_direction: {
-                type: "string"
+                type: "STRING"
               },
               visual_prompt: {
-                type: "string"
+                type: "STRING"
               }
             },
             required: [
@@ -213,13 +208,13 @@ Return ONLY JSON matching the provided schema.
               "body",
               "visual_direction",
               "visual_prompt"
-            ],
-            additionalProperties: false
+            ]
           }
         }
       },
-      required: ["slides"],
-      additionalProperties: false
+      required: [
+        "slides"
+      ]
     };
 
     const response = await fetch(
@@ -238,7 +233,7 @@ Return ONLY JSON matching the provided schema.
               role: "user",
               parts: [
                 {
-                  text: systemPrompt
+                  text: prompt
                 }
               ]
             }
@@ -246,7 +241,7 @@ Return ONLY JSON matching the provided schema.
 
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema: schema,
+            responseSchema,
             temperature: 0.8
           }
         })
@@ -278,15 +273,14 @@ Return ONLY JSON matching the provided schema.
 
     try {
       result = JSON.parse(rawText);
-    } catch (parseError) {
+    } catch (error) {
       console.error(
         "Gemini JSON parse error:",
         rawText
       );
 
       return res.status(500).json({
-        error:
-          "Gemini returned invalid JSON."
+        error: "Gemini returned invalid JSON."
       });
     }
 
@@ -305,7 +299,6 @@ Return ONLY JSON matching the provided schema.
     });
 
   } catch (error) {
-
     console.error(
       "Unexpected API error:",
       error

@@ -6,6 +6,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({
+        error: "GEMINI_API_KEY belum tersedia di Vercel."
+      });
+    }
+
     const {
       topic,
       audience,
@@ -19,218 +27,184 @@ export default async function handler(req, res) {
 
     if (!topic || !topic.trim()) {
       return res.status(400).json({
-        error: "Topic is required."
-      });
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(500).json({
-        error: "Gemini API key is not configured in Vercel."
+        error: "Topik carousel belum diisi."
       });
     }
 
     const count = Math.min(
-      Math.max(Number(slideCount) || 5, 5),
-      10
+      10,
+      Math.max(5, Number(slideCount) || 7)
     );
 
+    const selectedStyle =
+      style === "Custom"
+        ? customStyle || "Clean editorial minimal"
+        : style || "Editorial Minimal";
+
     const prompt = `
-You are the AI Creative Director behind
-PIXELCRAFT CAROUSEL STUDIO.
+You are PixelCraft Carousel Studio.
 
-Create a sophisticated, intentional,
-non-generic carousel.
+Your job is to create a sophisticated, intentional carousel concept and production-ready visual prompts.
 
-The product is NOT limited to religious content.
-It can be used for creators, businesses,
-educators, marketers and general audiences.
+IMPORTANT:
+You are NOT generating images.
+You are ONLY generating structured JSON containing:
+1. Carousel copy
+2. Visual direction
+3. Detailed visual prompts for each slide
 
-CORE DESIGN PHILOSOPHY:
+USER INPUT:
 
-Create clean, modern, editorial-quality visuals.
-
-Never create generic AI-looking compositions.
-
-Avoid:
-- visual clutter
-- excessive decorative elements
-- random floating objects
-- unnecessary gradients
-- cheesy 3D objects
-- excessive glassmorphism
-- generic futuristic decoration
-- meaningless symbols
-- visual metaphors
-- overcrowded layouts
-
-Every object must have a clear relationship
-to the slide content.
-
-Use generous negative space.
-
-Create strong visual hierarchy.
-
-The design should feel intentionally art-directed,
-not automatically generated.
-
-ABSOLUTE VISUAL SAFETY RULE:
-
-No humans.
-No human faces.
-No silhouettes.
-No body parts.
-No animals.
-No living beings.
-No characters.
-
-The visual concept must work entirely
-without living beings.
-
-VISUAL STYLE:
-${style || "3D Modern"}
-
-CUSTOM STYLE:
-${customStyle || "None"}
-
-AUDIENCE:
-${audience || "Creators"}
-
-TONE:
-${tone || "Educational"}
-
-DOMINANT COLOR:
-${color || "Choose an appropriate restrained palette"}
-
-WATERMARK:
-${watermark || "None"}
-
-NUMBER OF SLIDES:
-${count}
-
-CONTENT TOPIC:
+Topic:
 ${topic}
 
-CONTENT RULES:
+Target audience:
+${audience || "General audience"}
 
-Create exactly ${count} slides.
+Tone:
+${tone || "Friendly and informative"}
 
-Slide 1 must have a strong hook.
+Number of slides:
+${count}
 
-Middle slides should develop
-the idea naturally.
+Main color:
+${color || "Not specified"}
 
-The final slide should provide
-a useful conclusion, takeaway,
-or CTA when appropriate.
+Visual style:
+${selectedStyle}
 
-Write concise, natural,
-human-sounding copy.
+Watermark:
+${watermark || "None"}
 
-Avoid generic AI phrases such as:
-"unlock your potential",
-"dive into",
-"in today's fast-paced world",
-"revolutionize",
-"game changer",
-unless genuinely appropriate.
+PIXELCRAFT CREATIVE DIRECTION:
 
-Each slide should connect naturally
-to the previous slide.
+- Sophisticated
+- Modern editorial
+- Intentional composition
+- Clean and premium
+- Strong visual hierarchy
+- Generous negative space
+- Avoid generic AI-looking visuals
+- Avoid visual clutter
+- Avoid random decorative objects
+- Avoid meaningless symbols
+- Avoid excessive gradients
+- Avoid excessive glassmorphism
+- Avoid cheesy futuristic decoration
+- Avoid generic 3D decoration
+- Every visual element must have a purpose
+- Typography and composition should feel designed by a professional designer
+- Visual concepts must support the message of the slide
+- Do not simply repeat the headline visually
+- Use varied composition between slides while maintaining one visual system
 
-HEADLINES:
+ABSOLUTE VISUAL SAFETY:
 
-Keep headlines concise and easy to scan.
+Do NOT include:
+- Humans
+- Faces
+- Eyes
+- Nose
+- Mouth
+- Hands
+- Arms
+- Legs
+- Body parts
+- Silhouettes
+- Characters
+- Animals
+- Living creatures
 
-BODY:
+Use objects, abstract forms, typography, environments, textures, materials, architecture, food, stationery, technology objects, geometric compositions, or other non-living visual elements when appropriate.
 
-Keep body copy concise and useful.
+CAROUSEL STRUCTURE:
 
-VISUAL DIRECTION:
+Slide 1:
+Strong hook. Make the audience want to continue.
 
-Describe the intended art direction
-of the slide.
+Middle slides:
+Develop the idea naturally.
+Do not make every slide sound like a separate social-media hook.
+Create a logical progression.
 
-VISUAL PROMPT:
+Final slide:
+Conclusion, takeaway, or CTA that naturally closes the carousel.
 
-Write a complete image-generation prompt.
+COPY RULES:
 
-Every visual prompt MUST explicitly include:
+- Write concise human-sounding copy.
+- Avoid generic AI phrases.
+- Avoid repetitive sentence structures.
+- Avoid unnecessary emojis.
+- Avoid exaggerated clickbait.
+- Headlines should be strong but natural.
+- Body copy should be easy to read in a carousel.
+- Keep each slide focused on ONE main idea.
 
-No humans.
-No faces.
-No silhouettes.
-No body parts.
-No animals.
-No living beings.
-No characters.
+VISUAL PROMPT RULES:
 
-Do not put readable text into the image
-unless typography is specifically the visual concept.
+Each visual_prompt must be detailed enough to paste directly into an image-generation model.
 
-Use 4:5 vertical composition.
+Every visual_prompt MUST include:
+- visual subject
+- composition
+- camera/viewpoint when relevant
+- lighting
+- material/texture when relevant
+- color direction
+- visual style
+- negative constraints
+- 4:5 portrait composition
 
-Return ONLY valid JSON.
+Do not put written text, letters, words, logos, UI screenshots, or watermarks inside generated imagery unless the user explicitly requests them.
+
+The carousel should feel like ONE designed campaign, not unrelated images.
+
+OUTPUT ONLY VALID JSON.
+NO MARKDOWN.
+NO CODE FENCE.
+NO EXPLANATION OUTSIDE JSON.
+
+The JSON must contain exactly this structure:
+
+{
+  "project_summary": "...",
+  "creative_direction": "...",
+  "slides": [
+    {
+      "slide": 1,
+      "role": "hook",
+      "headline": "...",
+      "body": "...",
+      "visual_direction": "...",
+      "visual_prompt": "...",
+      "composition": "...",
+      "style": "...",
+      "negative_prompt": "..."
+    }
+  ]
+}
+
+There must be exactly ${count} slides.
+
+The "slide" numbers must start at 1 and continue sequentially until ${count}.
+
+Make every visual_prompt independently usable.
+
+Make sure the final JSON is valid and contains no trailing commas.
 `;
-
-    const responseSchema = {
-      type: "OBJECT",
-      properties: {
-        slides: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              slide: {
-                type: "INTEGER"
-              },
-              role: {
-                type: "STRING"
-              },
-              headline: {
-                type: "STRING"
-              },
-              body: {
-                type: "STRING"
-              },
-              visual_direction: {
-                type: "STRING"
-              },
-              visual_prompt: {
-                type: "STRING"
-              }
-            },
-            required: [
-              "slide",
-              "role",
-              "headline",
-              "body",
-              "visual_direction",
-              "visual_prompt"
-            ]
-          }
-        }
-      },
-      required: [
-        "slides"
-      ]
-    };
 
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
       {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey
         },
-
         body: JSON.stringify({
           contents: [
             {
-              role: "user",
               parts: [
                 {
                   text: prompt
@@ -238,10 +212,70 @@ Return ONLY valid JSON.
               ]
             }
           ],
-
           generationConfig: {
             responseMimeType: "application/json",
-            responseSchema,
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                project_summary: {
+                  type: "STRING"
+                },
+                creative_direction: {
+                  type: "STRING"
+                },
+                slides: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      slide: {
+                        type: "INTEGER"
+                      },
+                      role: {
+                        type: "STRING"
+                      },
+                      headline: {
+                        type: "STRING"
+                      },
+                      body: {
+                        type: "STRING"
+                      },
+                      visual_direction: {
+                        type: "STRING"
+                      },
+                      visual_prompt: {
+                        type: "STRING"
+                      },
+                      composition: {
+                        type: "STRING"
+                      },
+                      style: {
+                        type: "STRING"
+                      },
+                      negative_prompt: {
+                        type: "STRING"
+                      }
+                    },
+                    required: [
+                      "slide",
+                      "role",
+                      "headline",
+                      "body",
+                      "visual_direction",
+                      "visual_prompt",
+                      "composition",
+                      "style",
+                      "negative_prompt"
+                    ]
+                  }
+                }
+              },
+              required: [
+                "project_summary",
+                "creative_direction",
+                "slides"
+              ]
+            },
             temperature: 0.8
           }
         })
@@ -253,10 +287,12 @@ Return ONLY valid JSON.
     if (!response.ok) {
       console.error("Gemini API error:", data);
 
+      const message =
+        data?.error?.message ||
+        "Gemini gagal memproses permintaan.";
+
       return res.status(response.status).json({
-        error:
-          data?.error?.message ||
-          "Gemini API request failed."
+        error: message
       });
     }
 
@@ -264,8 +300,8 @@ Return ONLY valid JSON.
       data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!rawText) {
-      return res.status(500).json({
-        error: "Gemini returned an empty response."
+      return res.status(502).json({
+        error: "Gemini tidak mengembalikan hasil JSON."
       });
     }
 
@@ -273,41 +309,33 @@ Return ONLY valid JSON.
 
     try {
       result = JSON.parse(rawText);
-    } catch (error) {
-      console.error(
-        "Gemini JSON parse error:",
-        rawText
-      );
+    } catch (parseError) {
+      console.error("JSON parse error:", rawText);
 
-      return res.status(500).json({
-        error: "Gemini returned invalid JSON."
+      return res.status(502).json({
+        error: "Hasil dari Gemini bukan JSON yang valid."
       });
     }
 
     if (
       !result.slides ||
-      !Array.isArray(result.slides)
+      !Array.isArray(result.slides) ||
+      result.slides.length !== count
     ) {
-      return res.status(500).json({
-        error:
-          "Gemini response does not contain slides."
+      return res.status(502).json({
+        error: "Jumlah slide dari AI tidak sesuai."
       });
     }
 
-    return res.status(200).json({
-      slides: result.slides
-    });
+    return res.status(200).json(result);
 
   } catch (error) {
-    console.error(
-      "Unexpected API error:",
-      error
-    );
+    console.error("Server error:", error);
 
     return res.status(500).json({
       error:
-        error.message ||
-        "Unexpected server error."
+        error?.message ||
+        "Terjadi kesalahan pada server."
     });
   }
 }

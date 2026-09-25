@@ -1,1074 +1,624 @@
-"use strict";
+const $ = (selector) => document.querySelector(selector);
 
-/* =========================================================
-   PIXELCRAFT CAROUSEL STUDIO
-   Frontend Controller
-   ========================================================= */
+let generatedData = null;
+let currentStep = 1;
 
+// ===============================
+// STYLE SELECTOR
+// ===============================
 
-/* ---------------------------------------------------------
-   DOM
---------------------------------------------------------- */
+const styleCards = document.querySelectorAll(".style-option");
+const customStyleBox = $("#customStyle");
 
-const topicInput = document.getElementById("topic");
-const audienceInput = document.getElementById("audience");
-const toneInput = document.getElementById("tone");
-const slideCountInput = document.getElementById("slideCount");
-const colorInput = document.getElementById("color");
-const watermarkInput = document.getElementById("watermark");
+styleCards.forEach((card) => {
+  card.addEventListener("click", () => {
+    styleCards.forEach((item) => item.classList.remove("active"));
+    card.classList.add("active");
 
-const customStyleInput = document.getElementById("customStyle");
-const customStyleField = document.getElementById("customStyleField");
+    const value = card.dataset.style;
 
-const referenceImageInput =
-  document.getElementById("referenceImage");
-
-const uploadText =
-  document.getElementById("uploadText");
-
-const generateContentButton =
-  document.getElementById("generateContent");
-
-const generateVisualButton =
-  document.getElementById("generateVisual");
-
-const backToInputButton =
-  document.getElementById("backToInput");
-
-const copyAllJsonButton =
-  document.getElementById("copyAllJson");
-
-const inputPanel =
-  document.getElementById("inputPanel");
-
-const editorSection =
-  document.getElementById("editorSection");
-
-const resultsSection =
-  document.getElementById("resultsSection");
-
-const slidesEditor =
-  document.getElementById("slidesEditor");
-
-const visualResults =
-  document.getElementById("visualResults");
-
-const errorMessage =
-  document.getElementById("errorMessage");
-
-const editorStatus =
-  document.getElementById("editorStatus");
-
-const stepIndicator1 =
-  document.getElementById("stepIndicator1");
-
-const stepIndicator2 =
-  document.getElementById("stepIndicator2");
-
-const stepIndicator3 =
-  document.getElementById("stepIndicator3");
-
-const styleOptions =
-  document.querySelectorAll(".style-option");
-
-
-/* ---------------------------------------------------------
-   STATE
---------------------------------------------------------- */
-
-let selectedStyle = "3D Modern";
-let carouselData = null;
-
-
-/* ---------------------------------------------------------
-   INITIALIZE
---------------------------------------------------------- */
-
-document.addEventListener("DOMContentLoaded", () => {
-
-  setupStyleSelector();
-
-  setupReferenceUpload();
-
-  setupButtons();
-
-  updateCustomStyleVisibility();
-
+    if (customStyleBox) {
+      customStyleBox.style.display =
+        value === "Custom" ? "block" : "none";
+    }
+  });
 });
 
+// ===============================
+// REFERENCE IMAGE
+// ===============================
 
-/* ---------------------------------------------------------
-   STYLE SELECTOR
---------------------------------------------------------- */
+const referenceInput = $("#referenceImage");
+const referenceName = $("#referenceName");
 
-function setupStyleSelector() {
+if (referenceInput) {
+  referenceInput.addEventListener("change", () => {
+    const file = referenceInput.files?.[0];
 
-  styleOptions.forEach((button) => {
+    if (referenceName) {
+      referenceName.textContent = file
+        ? file.name
+        : "Belum ada referensi";
+    }
+  });
+}
 
-    button.addEventListener("click", () => {
+// ===============================
+// STEP INDICATOR
+// ===============================
 
-      styleOptions.forEach((item) => {
-        item.classList.remove("selected");
-      });
+function setStep(step) {
+  currentStep = step;
 
-      button.classList.add("selected");
+  document.querySelectorAll(".step").forEach((item) => {
+    const number = Number(item.dataset.step);
 
-      selectedStyle =
-        button.dataset.style || "3D Modern";
+    item.classList.toggle("active", number === step);
+    item.classList.toggle("completed", number < step);
+  });
+}
 
-      updateCustomStyleVisibility();
+// ===============================
+// HELPERS
+// ===============================
 
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+function prettyJSON(data) {
+  return JSON.stringify(data, null, 2);
+}
+
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+
+    if (button) {
+      const original = button.textContent;
+      button.textContent = "✓ Copied";
+
+      setTimeout(() => {
+        button.textContent = original;
+      }, 1500);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Copy failed:", error);
+
+    // fallback
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+      document.execCommand("copy");
+    } catch (err) {
+      console.error(err);
+    }
+
+    textarea.remove();
+
+    if (button) {
+      const original = button.textContent;
+      button.textContent = "✓ Copied";
+
+      setTimeout(() => {
+        button.textContent = original;
+      }, 1500);
+    }
+
+    return true;
+  }
+}
+
+function showLoading(show) {
+  const button = $("#generateContent");
+
+  if (!button) return;
+
+  if (show) {
+    button.disabled = true;
+    button.dataset.originalText =
+      button.textContent || "Generate Content";
+    button.textContent = "Menyusun carousel...";
+  } else {
+    button.disabled = false;
+    button.textContent =
+      button.dataset.originalText || "Generate Content";
+  }
+}
+
+function showError(message) {
+  const errorBox = $("#errorMessage");
+
+  if (!errorBox) {
+    alert(message);
+    return;
+  }
+
+  errorBox.textContent = message;
+  errorBox.style.display = "block";
+}
+
+function hideError() {
+  const errorBox = $("#errorMessage");
+
+  if (errorBox) {
+    errorBox.style.display = "none";
+    errorBox.textContent = "";
+  }
+}
+
+// ===============================
+// BUILD PER-SLIDE PROMPT
+// ===============================
+
+function buildSlidePrompt(slide) {
+  return `Create the visual for Slide ${slide.slide} of a carousel.
+
+ROLE:
+${slide.role}
+
+HEADLINE:
+${slide.headline}
+
+BODY:
+${slide.body}
+
+VISUAL DIRECTION:
+${slide.visual_direction}
+
+COMPOSITION:
+${slide.composition}
+
+STYLE:
+${slide.style}
+
+VISUAL PROMPT:
+${slide.visual_prompt}
+
+NEGATIVE PROMPT:
+${slide.negative_prompt}
+
+IMPORTANT:
+- Portrait 4:5 composition.
+- Follow the visual direction precisely.
+- Keep the composition clean and intentional.
+- No humans.
+- No faces.
+- No eyes, nose, mouth, hands, arms, legs, body parts, silhouettes, characters, or animals.
+- No random decorative objects.
+- No unnecessary text inside the generated image.
+- No logos or watermarks unless explicitly requested.
+- Preserve the visual identity and style of the carousel.`;
+}
+
+// ===============================
+// RENDER RESULTS
+// ===============================
+
+function renderResults(data) {
+  generatedData = data;
+
+  const resultSection = $("#results");
+  const editorSection = $("#editor");
+
+  if (editorSection) {
+    editorSection.style.display = "none";
+  }
+
+  if (!resultSection) {
+    console.warn("Results container not found.");
+    return;
+  }
+
+  resultSection.style.display = "block";
+
+  const fullJSON = prettyJSON(data);
+
+  resultSection.innerHTML = `
+    <div class="results-header">
+      <div>
+        <span class="eyebrow">PIXELCRAFT OUTPUT</span>
+        <h2>Carousel prompt kamu sudah siap ✨</h2>
+        <p>
+          Pilih mau mengambil seluruh JSON sekaligus
+          atau copy prompt visual per slide.
+        </p>
+      </div>
+    </div>
+
+    <div class="output-tabs">
+      <button class="output-tab active" data-output-tab="full">
+        Full JSON
+      </button>
+
+      <button class="output-tab" data-output-tab="slides">
+        Per Slide
+      </button>
+    </div>
+
+    <div id="fullOutput" class="output-panel active">
+
+      <div class="output-card">
+        <div class="output-card-header">
+          <div>
+            <strong>Full Carousel JSON</strong>
+            <span>Semua struktur carousel dalam satu JSON.</span>
+          </div>
+
+          <button
+            class="copy-button"
+            id="copyFullJSON"
+            type="button"
+          >
+            Copy Full JSON
+          </button>
+        </div>
+
+        <pre class="json-output">${escapeHtml(fullJSON)}</pre>
+      </div>
+
+      <div class="next-step-card">
+
+        <div class="next-step-title">
+          <span>🎨</span>
+          <div>
+            <strong>Punya Canva Pro?</strong>
+            <p>
+              Kamu bisa membawa seluruh struktur carousel
+              langsung ke Canva AI.
+            </p>
+          </div>
+        </div>
+
+        <ol>
+          <li>Buka Canva dan buat desain baru.</li>
+          <li>Buka Canva AI di dalam Canva.</li>
+          <li>Copy <strong>Full JSON</strong> dari PixelCraft.</li>
+          <li>Paste seluruh JSON ke chat Canva AI.</li>
+          <li>
+            Biarkan Canva AI membaca brief dan membantu
+            mengolah prompt/visual sesuai struktur carousel.
+          </li>
+        </ol>
+
+        <small>
+          Canva Pro diperlukan untuk fitur AI tertentu,
+          tergantung akun dan ketersediaan fitur.
+        </small>
+
+      </div>
+
+    </div>
+
+    <div id="slideOutput" class="output-panel">
+
+      <div class="slide-output-intro">
+        <strong>Generate visual satu per satu</strong>
+        <p>
+          Copy prompt tiap slide lalu gunakan di Google Flow
+          untuk membuat visualnya satu per satu.
+        </p>
+      </div>
+
+      <div id="slidePromptList"></div>
+
+      <div class="flow-guide-card">
+
+        <div class="next-step-title">
+          <span>🎬</span>
+          <div>
+            <strong>Google Flow</strong>
+            <p>
+              Cocok kalau kamu mau generate visual
+              satu per satu dengan kontrol lebih detail.
+            </p>
+          </div>
+        </div>
+
+        <ol>
+          <li>Copy prompt dari slide yang ingin dibuat.</li>
+          <li>Buka Google Flow.</li>
+          <li>Paste prompt tersebut.</li>
+          <li>Generate visualnya.</li>
+          <li>Ulangi untuk slide berikutnya.</li>
+        </ol>
+
+        <small>
+          Ketersediaan Flow dan model dapat berbeda
+          berdasarkan akun dan wilayah.
+        </small>
+
+      </div>
+
+    </div>
+  `;
+
+  renderSlidePrompts(data.slides || []);
+
+  // Full JSON copy
+  const copyFullButton = $("#copyFullJSON");
+
+  if (copyFullButton) {
+    copyFullButton.addEventListener("click", () => {
+      copyText(fullJSON, copyFullButton);
     });
+  }
 
+  // Output tabs
+  document.querySelectorAll(".output-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.outputTab;
+
+      document
+        .querySelectorAll(".output-tab")
+        .forEach((item) => item.classList.remove("active"));
+
+      document
+        .querySelectorAll(".output-panel")
+        .forEach((panel) => panel.classList.remove("active"));
+
+      tab.classList.add("active");
+
+      const targetPanel =
+        target === "full"
+          ? $("#fullOutput")
+          : $("#slideOutput");
+
+      if (targetPanel) {
+        targetPanel.classList.add("active");
+      }
+    });
   });
 
+  setStep(3);
+
+  resultSection.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 }
 
+// ===============================
+// RENDER SLIDE PROMPTS
+// ===============================
 
-function updateCustomStyleVisibility() {
+function renderSlidePrompts(slides) {
+  const container = $("#slidePromptList");
 
-  if (!customStyleField) {
-    return;
-  }
+  if (!container) return;
 
-  if (selectedStyle === "Custom") {
+  container.innerHTML = slides
+    .map((slide) => {
+      const prompt = buildSlidePrompt(slide);
 
-    customStyleField.classList.add("active");
+      return `
+        <article class="slide-prompt-card">
 
-  } else {
+          <div class="slide-prompt-header">
 
-    customStyleField.classList.remove("active");
+            <div class="slide-number">
+              ${escapeHtml(slide.slide)}
+            </div>
 
-  }
+            <div class="slide-meta">
+              <strong>
+                Slide ${escapeHtml(slide.slide)}
+              </strong>
 
+              <span>
+                ${escapeHtml(slide.role)}
+              </span>
+            </div>
+
+            <button
+              class="copy-button slide-copy-button"
+              type="button"
+              data-prompt="${encodeURIComponent(prompt)}"
+            >
+              Copy Prompt
+            </button>
+
+          </div>
+
+          <div class="slide-preview">
+
+            <h3>
+              ${escapeHtml(slide.headline)}
+            </h3>
+
+            <p>
+              ${escapeHtml(slide.body)}
+            </p>
+
+            <div class="visual-direction">
+              <span>VISUAL DIRECTION</span>
+              <p>
+                ${escapeHtml(slide.visual_direction)}
+              </p>
+            </div>
+
+          </div>
+
+          <details class="prompt-details">
+            <summary>Preview prompt</summary>
+
+            <pre>${escapeHtml(prompt)}</pre>
+          </details>
+
+        </article>
+      `;
+    })
+    .join("");
+
+  document
+    .querySelectorAll(".slide-copy-button")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const encoded = button.dataset.prompt;
+
+        let prompt = "";
+
+        try {
+          prompt = decodeURIComponent(encoded);
+        } catch {
+          prompt = encoded;
+        }
+
+        copyText(prompt, button);
+      });
+    });
 }
 
+// ===============================
+// BACK TO INPUT
+// ===============================
 
-/* ---------------------------------------------------------
-   REFERENCE IMAGE
---------------------------------------------------------- */
+const backButton = $("#backToInput");
 
-function setupReferenceUpload() {
+if (backButton) {
+  backButton.addEventListener("click", () => {
+    const results = $("#results");
 
-  if (!referenceImageInput) {
-    return;
-  }
+    if (results) {
+      results.style.display = "none";
+    }
 
-  referenceImageInput.addEventListener("change", () => {
+    const editor = $("#editor");
 
-    const file =
-      referenceImageInput.files &&
-      referenceImageInput.files[0];
+    if (editor) {
+      editor.style.display = "none";
+    }
 
-    if (!file) {
+    setStep(1);
 
-      uploadText.textContent =
-        "+ Add reference";
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  });
+}
 
+// ===============================
+// GENERATE CONTENT
+// ===============================
+
+const generateButton = $("#generateContent");
+
+if (generateButton) {
+  generateButton.addEventListener("click", async () => {
+    hideError();
+
+    const topic = $("#topic")?.value?.trim() || "";
+
+    const audience =
+      $("#audience")?.value || "";
+
+    const tone =
+      $("#tone")?.value || "";
+
+    const slideCount =
+      Number($("#slideCount")?.value) || 7;
+
+    const color =
+      $("#color")?.value || "";
+
+    const activeStyle =
+      document.querySelector(".style-option.active");
+
+    const style =
+      activeStyle?.dataset?.style ||
+      "Editorial Minimal";
+
+    const customStyle =
+      $("#customStyle")?.value?.trim() || "";
+
+    const watermark =
+      $("#watermark")?.value?.trim() || "";
+
+    if (!topic) {
+      showError(
+        "Isi topik carousel dulu ya ✨"
+      );
+
+      $("#topic")?.focus();
       return;
     }
 
-    uploadText.textContent =
-      file.name;
-
-  });
-
-}
-
-
-/* ---------------------------------------------------------
-   BUTTONS
---------------------------------------------------------- */
-
-function setupButtons() {
-
-  generateContentButton?.addEventListener(
-    "click",
-    generateContent
-  );
-
-  backToInputButton?.addEventListener(
-    "click",
-    showInputPanel
-  );
-
-  generateVisualButton?.addEventListener(
-    "click",
-    generateVisuals
-  );
-
-  copyAllJsonButton?.addEventListener(
-    "click",
-    copyAllJson
-  );
-
-}
-
-
-/* ---------------------------------------------------------
-   GENERATE CONTENT
---------------------------------------------------------- */
-
-async function generateContent() {
-
-  clearError();
-
-  const topic =
-    topicInput?.value.trim();
-
-  if (!topic) {
-
-    showError(
-      "Tulis dulu topic atau ide carousel kamu."
-    );
-
-    topicInput?.focus();
-
-    return;
-  }
-
-
-  const slideCount =
-    Number(slideCountInput?.value || 5);
-
-
-  const payload = {
-
-    topic,
-
-    audience:
-      audienceInput?.value || "Creators",
-
-    tone:
-      toneInput?.value || "Educational",
-
-    slideCount,
-
-    color:
-      colorInput?.value.trim() || "",
-
-    style:
-      selectedStyle,
-
-    customStyle:
-      customStyleInput?.value.trim() || "",
-
-    watermark:
-      watermarkInput?.value.trim() || ""
-
-  };
-
-
-  setButtonLoading(
-    generateContentButton,
-    true,
-    "CREATING..."
-  );
-
-
-  try {
-
-    const response =
-      await fetch("/api/generate", {
-
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json"
-        },
-
-        body:
-          JSON.stringify(payload)
-
-      });
-
-
-    const data =
-      await response.json().catch(() => ({}));
-
-
-    if (!response.ok) {
-
-      throw new Error(
-        data.error ||
-        `Request failed (${response.status})`
-      );
-
-    }
-
-
-    if (
-      !data.slides ||
-      !Array.isArray(data.slides)
-    ) {
-
-      throw new Error(
-        "Gemini tidak mengembalikan format carousel yang valid."
-      );
-
-    }
-
-
-    carouselData = {
-      slides: data.slides
-    };
-
-
-    renderSlidesEditor();
-
-    showEditor();
-
-    updateSteps(2);
-
-  } catch (error) {
-
-    console.error(error);
-
-    showError(
-      error.message ||
-      "Terjadi kesalahan saat membuat carousel."
-    );
-
-  } finally {
-
-    setButtonLoading(
-      generateContentButton,
-      false,
-      "GENERATE CONTENT"
-    );
-
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   RENDER SLIDE EDITOR
---------------------------------------------------------- */
-
-function renderSlidesEditor() {
-
-  if (!slidesEditor) {
-    return;
-  }
-
-  slidesEditor.innerHTML = "";
-
-
-  carouselData.slides.forEach(
-    (slide, index) => {
-
-      const slideElement =
-        document.createElement("div");
-
-      slideElement.className =
-        "slide-editor";
-
-
-      slideElement.innerHTML = `
-
-        <div class="slide-header">
-
-          <div class="slide-number">
-            ${String(index + 1).padStart(2, "0")}
-          </div>
-
-          <div class="slide-role">
-            ${escapeHtml(slide.role || "CONTENT")}
-          </div>
-
-        </div>
-
-
-        <div class="slide-body">
-
-          <div class="field">
-
-            <label>
-              Headline
-            </label>
-
-            <input
-              type="text"
-              class="slide-headline"
-              data-index="${index}"
-              value="${escapeAttribute(slide.headline || "")}"
-            />
-
-          </div>
-
-
-          <div class="field">
-
-            <label>
-              Body
-            </label>
-
-            <textarea
-              rows="4"
-              class="slide-body-text"
-              data-index="${index}"
-            >${escapeHtml(slide.body || "")}</textarea>
-
-          </div>
-
-
-          <div class="field">
-
-            <label>
-              Visual Direction
-            </label>
-
-            <textarea
-              rows="3"
-              class="slide-visual-direction"
-              data-index="${index}"
-            >${escapeHtml(slide.visual_direction || "")}</textarea>
-
-          </div>
-
-
-          <div class="field">
-
-            <label>
-              Visual Prompt
-            </label>
-
-            <textarea
-              rows="5"
-              class="slide-visual-prompt"
-              data-index="${index}"
-            >${escapeHtml(slide.visual_prompt || "")}</textarea>
-
-          </div>
-
-        </div>
-
-      `;
-
-
-      slidesEditor.appendChild(
-        slideElement
-      );
-
-    }
-  );
-
-
-  bindEditorInputs();
-
-}
-
-
-/* ---------------------------------------------------------
-   EDITOR INPUTS
---------------------------------------------------------- */
-
-function bindEditorInputs() {
-
-  document
-    .querySelectorAll(".slide-headline")
-    .forEach((input) => {
-
-      input.addEventListener(
-        "input",
-        (event) => {
-
-          const index =
-            Number(event.target.dataset.index);
-
-          carouselData.slides[index].headline =
-            event.target.value;
-
+    setStep(2);
+    showLoading(true);
+
+    try {
+      const response = await fetch(
+        "/api/generate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            topic,
+            audience,
+            tone,
+            slideCount,
+            color,
+            style,
+            customStyle,
+            watermark
+          })
         }
       );
 
-    });
-
-
-  document
-    .querySelectorAll(".slide-body-text")
-    .forEach((input) => {
-
-      input.addEventListener(
-        "input",
-        (event) => {
-
-          const index =
-            Number(event.target.dataset.index);
-
-          carouselData.slides[index].body =
-            event.target.value;
-
-        }
-      );
-
-    });
-
-
-  document
-    .querySelectorAll(".slide-visual-direction")
-    .forEach((input) => {
-
-      input.addEventListener(
-        "input",
-        (event) => {
-
-          const index =
-            Number(event.target.dataset.index);
-
-          carouselData.slides[index].visual_direction =
-            event.target.value;
-
-        }
-      );
-
-    });
-
-
-  document
-    .querySelectorAll(".slide-visual-prompt")
-    .forEach((input) => {
-
-      input.addEventListener(
-        "input",
-        (event) => {
-
-          const index =
-            Number(event.target.dataset.index);
-
-          carouselData.slides[index].visual_prompt =
-            event.target.value;
-
-        }
-      );
-
-    });
-
-}
-
-
-/* ---------------------------------------------------------
-   GENERATE VISUALS
---------------------------------------------------------- */
-
-function generateVisuals() {
-
-  clearError();
-
-  if (
-    !carouselData ||
-    !Array.isArray(carouselData.slides)
-  ) {
-
-    showError(
-      "Belum ada carousel yang bisa diproses."
-    );
-
-    return;
-
-  }
-
-
-  syncEditorData();
-
-  renderVisualResults();
-
-  showResults();
-
-  updateSteps(3);
-
-}
-
-
-/* ---------------------------------------------------------
-   SYNC EDITOR
---------------------------------------------------------- */
-
-function syncEditorData() {
-
-  if (!carouselData) {
-    return;
-  }
-
-
-  document
-    .querySelectorAll(".slide-headline")
-    .forEach((input) => {
-
-      const index =
-        Number(input.dataset.index);
-
-      carouselData.slides[index].headline =
-        input.value;
-
-    });
-
-
-  document
-    .querySelectorAll(".slide-body-text")
-    .forEach((input) => {
-
-      const index =
-        Number(input.dataset.index);
-
-      carouselData.slides[index].body =
-        input.value;
-
-    });
-
-
-  document
-    .querySelectorAll(".slide-visual-direction")
-    .forEach((input) => {
-
-      const index =
-        Number(input.dataset.index);
-
-      carouselData.slides[index].visual_direction =
-        input.value;
-
-    });
-
-
-  document
-    .querySelectorAll(".slide-visual-prompt")
-    .forEach((input) => {
-
-      const index =
-        Number(input.dataset.index);
-
-      carouselData.slides[index].visual_prompt =
-        input.value;
-
-    });
-
-}
-
-
-/* ---------------------------------------------------------
-   RENDER VISUAL RESULTS
---------------------------------------------------------- */
-
-function renderVisualResults() {
-
-  if (!visualResults) {
-    return;
-  }
-
-  visualResults.innerHTML = "";
-
-
-  carouselData.slides.forEach(
-    (slide, index) => {
-
-      const card =
-        document.createElement("article");
-
-      card.className =
-        "result-card";
-
-
-      const jsonData = {
-        slide: slide.slide || index + 1,
-        role: slide.role || "CONTENT",
-        headline: slide.headline || "",
-        body: slide.body || "",
-        visual_direction:
-          slide.visual_direction || "",
-        visual_prompt:
-          slide.visual_prompt || ""
-      };
-
-
-      card.innerHTML = `
-
-        <div class="slide-header">
-
-          <div class="slide-number">
-            ${String(index + 1).padStart(2, "0")}
-          </div>
-
-          <div class="slide-role">
-            ${escapeHtml(slide.role || "CONTENT")}
-          </div>
-
-        </div>
-
-
-        <div class="result-grid">
-
-          <div class="visual-placeholder">
-
-            <span>
-              VISUAL DIRECTION
-            </span>
-
-            <strong>
-              ${escapeHtml(
-                slide.visual_direction || ""
-              )}
-            </strong>
-
-          </div>
-
-
-          <div class="prompt-panel">
-
-            <div class="prompt-panel-top">
-
-              <span>
-                VISUAL PROMPT
-              </span>
-
-              <button
-                class="copy-json"
-                data-index="${index}"
-                type="button"
-              >
-                Copy JSON
-              </button>
-
-            </div>
-
-
-            <pre class="prompt-json">${escapeHtml(
-              JSON.stringify(
-                jsonData,
-                null,
-                2
-              )
-            )}</pre>
-
-          </div>
-
-        </div>
-
-      `;
-
-
-      visualResults.appendChild(card);
-
-    }
-  );
-
-
-  document
-    .querySelectorAll(".copy-json")
-    .forEach((button) => {
-
-      button.addEventListener(
-        "click",
-        async () => {
-
-          const index =
-            Number(button.dataset.index);
-
-          const slide =
-            carouselData.slides[index];
-
-          const json = JSON.stringify(
-            slide,
-            null,
-            2
-          );
-
-          await copyText(
-            json,
-            button
-          );
-
-        }
-      );
-
-    });
-
-}
-
-
-/* ---------------------------------------------------------
-   COPY ALL JSON
---------------------------------------------------------- */
-
-async function copyAllJson() {
-
-  if (!carouselData) {
-    return;
-  }
-
-
-  syncEditorData();
-
-
-  const json =
-    JSON.stringify(
-      carouselData,
-      null,
-      2
-    );
-
-
-  await copyText(
-    json,
-    copyAllJsonButton
-  );
-
-}
-
-
-/* ---------------------------------------------------------
-   COPY HELPER
---------------------------------------------------------- */
-
-async function copyText(
-  text,
-  button
-) {
-
-  try {
-
-    await navigator.clipboard.writeText(
-      text
-    );
-
-
-    const original =
-      button.textContent;
-
-
-    button.textContent =
-      "Copied ✓";
-
-
-    setTimeout(() => {
-
-      button.textContent =
-        original;
-
-    }, 1400);
-
-
-  } catch (error) {
-
-    console.error(error);
-
-    showError(
-      "Clipboard tidak tersedia. Silakan copy manual."
-    );
-
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   NAVIGATION
---------------------------------------------------------- */
-
-function showInputPanel() {
-
-  inputPanel?.classList.remove(
-    "hidden"
-  );
-
-  editorSection?.classList.add(
-    "hidden"
-  );
-
-  resultsSection?.classList.add(
-    "hidden"
-  );
-
-  clearError();
-
-  updateSteps(1);
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
-
-}
-
-
-function showEditor() {
-
-  inputPanel?.classList.add(
-    "hidden"
-  );
-
-  editorSection?.classList.remove(
-    "hidden"
-  );
-
-  resultsSection?.classList.add(
-    "hidden"
-  );
-
-  editorSection?.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-
-}
-
-
-function showResults() {
-
-  inputPanel?.classList.add(
-    "hidden"
-  );
-
-  editorSection?.classList.add(
-    "hidden"
-  );
-
-  resultsSection?.classList.remove(
-    "hidden"
-  );
-
-  resultsSection?.scrollIntoView({
-    behavior: "smooth",
-    block: "start"
-  });
-
-}
-
-
-/* ---------------------------------------------------------
-   STEP INDICATOR
---------------------------------------------------------- */
-
-function updateSteps(activeStep) {
-
-  const indicators = [
-    stepIndicator1,
-    stepIndicator2,
-    stepIndicator3
-  ];
-
-
-  indicators.forEach(
-    (indicator, index) => {
-
-      if (!indicator) {
-        return;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error ||
+          "Gagal membuat carousel."
+        );
       }
 
-      indicator.classList.toggle(
-        "active",
-        index + 1 === activeStep
+      if (
+        !data.slides ||
+        !Array.isArray(data.slides)
+      ) {
+        throw new Error(
+          "AI tidak mengembalikan struktur carousel yang valid."
+        );
+      }
+
+      renderResults(data);
+
+    } catch (error) {
+      console.error(error);
+
+      setStep(1);
+
+      showError(
+        error?.message ||
+        "Terjadi kesalahan. Coba lagi."
       );
 
+    } finally {
+      showLoading(false);
     }
-  );
-
-}
-
-
-/* ---------------------------------------------------------
-   LOADING STATE
---------------------------------------------------------- */
-
-function setButtonLoading(
-  button,
-  loading,
-  text
-) {
-
-  if (!button) {
-    return;
-  }
-
-
-  button.disabled =
-    loading;
-
-
-  const span =
-    button.querySelector("span");
-
-
-  if (span) {
-
-    if (!button.dataset.originalText) {
-
-      button.dataset.originalText =
-        span.textContent;
-
-    }
-
-
-    span.textContent =
-      loading
-        ? text
-        : button.dataset.originalText;
-
-  }
-
-}
-
-
-/* ---------------------------------------------------------
-   ERROR
---------------------------------------------------------- */
-
-function showError(message) {
-
-  if (!errorMessage) {
-    return;
-  }
-
-  errorMessage.textContent =
-    message;
-
-  errorMessage.classList.add(
-    "visible"
-  );
-
-
-  errorMessage.scrollIntoView({
-    behavior: "smooth",
-    block: "nearest"
   });
-
 }
 
+// ===============================
+// INITIAL STATE
+// ===============================
 
-function clearError() {
-
-  if (!errorMessage) {
-    return;
-  }
-
-  errorMessage.textContent =
-    "";
-
-  errorMessage.classList.remove(
-    "visible"
-  );
-
-}
-
-
-/* ---------------------------------------------------------
-   ESCAPE HTML
---------------------------------------------------------- */
-
-function escapeHtml(value) {
-
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-
-}
-
-
-function escapeAttribute(value) {
-
-  return escapeHtml(value);
-
-}
+setStep(1);
